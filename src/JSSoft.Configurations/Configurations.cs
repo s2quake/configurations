@@ -39,6 +39,18 @@ public class Configurations : IReadOnlyDictionary<string, object>
         _descriptorByName = Descriptors.ToDictionary(item => $"{item.Key}", item => item.Value);
     }
 
+    public int Count => _valueByName.Count;
+
+    public virtual string Name => "configurations";
+
+    public ConfigurationDescriptorCollection Descriptors { get; }
+
+    IEnumerable<string> IReadOnlyDictionary<string, object>.Keys => _valueByName.Keys;
+
+    IEnumerable<object> IReadOnlyDictionary<string, object>.Values => _valueByName.Values;
+
+    object IReadOnlyDictionary<string, object>.this[string key] => _valueByName[key];
+
     public static Configurations Create(params object[] objects)
     {
         var configurations = new Configurations(objects.Select(item => item.GetType()));
@@ -54,60 +66,11 @@ public class Configurations : IReadOnlyDictionary<string, object>
         }
     }
 
-    private void CommitObject(object obj)
-    {
-        const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
-        var scopeType = _settings.ScopeType;
-        var properties = obj.GetType().GetProperties(bindingFlags);
-        var query = from item in properties
-                    where item.CanRead == true && item.CanWrite == true
-                    let attribute = item.GetCustomAttribute<ConfigurationPropertyAttribute>()
-                    where object.Equals(attribute?.ScopeType, scopeType) == true && Descriptors.ContainsKey(item) == true
-                    select Descriptors[item];
-        var items = query.ToArray();
-        foreach (var item in items)
-        {
-            if (item.GetValue(obj) is object value)
-            {
-                _valueByName[item.Key] = value;
-            }
-            else if (_valueByName.ContainsKey(item.Key) == true)
-            {
-                _valueByName.Remove(item.Key);
-            }
-        }
-    }
-
     public void Update(params object[] objects)
     {
         foreach (var item in objects)
         {
             UpdateObject(obj: item);
-        }
-    }
-    private void UpdateObject(object obj)
-    {
-        const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
-        var scopeType = _settings.ScopeType;
-        var properties = obj.GetType().GetProperties(bindingFlags);
-        var query = from item in properties
-                    where item.CanRead == true && item.CanWrite == true
-                    let attribute = item.GetCustomAttribute<ConfigurationPropertyAttribute>()
-                    where object.Equals(attribute?.ScopeType, scopeType) == true && Descriptors.ContainsKey(item) == true
-                    select Descriptors[item];
-        var items = query.ToArray();
-        foreach (var item in items)
-        {
-            try
-            {
-                if (_valueByName.TryGetValue(item.Key, out var value) == true)
-                {
-                    item.SetValue(obj, value);
-                }
-            }
-            catch
-            {
-            }
         }
     }
 
@@ -146,20 +109,6 @@ public class Configurations : IReadOnlyDictionary<string, object>
         }
     }
 
-    public int Count => _valueByName.Count;
-
-    public virtual string Name => "configurations";
-
-    public ConfigurationDescriptorCollection Descriptors { get; }
-
-    #region IReadOnlyDictionary
-
-    IEnumerable<string> IReadOnlyDictionary<string, object>.Keys => _valueByName.Keys;
-
-    IEnumerable<object> IReadOnlyDictionary<string, object>.Values => _valueByName.Values;
-
-    object IReadOnlyDictionary<string, object>.this[string key] => _valueByName[key];
-
     bool IReadOnlyDictionary<string, object>.ContainsKey(string key)
     {
         return _valueByName.ContainsKey(key);
@@ -172,6 +121,7 @@ public class Configurations : IReadOnlyDictionary<string, object>
             value = v;
             return true;
         }
+
         value = DBNull.Value;
         return false;
     }
@@ -192,5 +142,53 @@ public class Configurations : IReadOnlyDictionary<string, object>
         }
     }
 
-    #endregion
+    private void CommitObject(object obj)
+    {
+        const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+        var scopeType = _settings.ScopeType;
+        var properties = obj.GetType().GetProperties(bindingFlags);
+        var query = from item in properties
+                    where item.CanRead == true && item.CanWrite == true
+                    let attribute = item.GetCustomAttribute<ConfigurationPropertyAttribute>()
+                    where object.Equals(attribute?.ScopeType, scopeType) == true && Descriptors.ContainsKey(item) == true
+                    select Descriptors[item];
+        var items = query.ToArray();
+        foreach (var item in items)
+        {
+            if (item.GetValue(obj) is object value)
+            {
+                _valueByName[item.Key] = value;
+            }
+            else if (_valueByName.ContainsKey(item.Key) == true)
+            {
+                _valueByName.Remove(item.Key);
+            }
+        }
+    }
+
+    private void UpdateObject(object obj)
+    {
+        const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+        var scopeType = _settings.ScopeType;
+        var properties = obj.GetType().GetProperties(bindingFlags);
+        var query = from item in properties
+                    where item.CanRead == true && item.CanWrite == true
+                    let attribute = item.GetCustomAttribute<ConfigurationPropertyAttribute>()
+                    where object.Equals(attribute?.ScopeType, scopeType) == true && Descriptors.ContainsKey(item) == true
+                    select Descriptors[item];
+        var items = query.ToArray();
+        foreach (var item in items)
+        {
+            try
+            {
+                if (_valueByName.TryGetValue(item.Key, out var value) == true)
+                {
+                    item.SetValue(obj, value);
+                }
+            }
+            catch
+            {
+            }
+        }
+    }
 }

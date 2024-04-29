@@ -16,7 +16,6 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.Collections.Generic;
 using System.Xml;
 
 namespace JSSoft.Configurations;
@@ -26,7 +25,7 @@ public class ConfigurationXmlSerializer : IConfigurationSerializer
     public const string Namespace = "http://schemas.jssoft.com/configs";
     public const string Configurations = nameof(Configurations);
 
-    private static readonly Dictionary<Type, Func<XmlReader, object>> s_getterByType = new()
+    private static readonly Dictionary<Type, Func<XmlReader, object>> GetterByType = new()
     {
         { typeof(string), new Func<XmlReader, object>(reader => reader.ReadContentAsString()) },
         { typeof(bool), new Func<XmlReader, object>(reader => reader.ReadContentAsBoolean()) },
@@ -37,10 +36,20 @@ public class ConfigurationXmlSerializer : IConfigurationSerializer
         { typeof(decimal), new Func<XmlReader, object>(reader => reader.ReadContentAsDecimal()) },
         { typeof(Guid), new Func<XmlReader, object>(reader => XmlConvert.ToGuid(reader.ReadContentAsString())) },
         { typeof(TimeSpan), new Func<XmlReader, object>(reader => XmlConvert.ToTimeSpan(reader.ReadContentAsString())) },
-        { typeof(DateTimeOffset), new Func<XmlReader, object>(reader => XmlConvert.ToDateTimeOffset(reader.ReadContentAsString())) },
-        { typeof(DateTime), new Func<XmlReader, object>(reader => XmlConvert.ToDateTime(reader.ReadContentAsString(), XmlDateTimeSerializationMode.Utc)) },
+        {
+            typeof(DateTimeOffset),
+            new Func<XmlReader, object>(reader => XmlConvert.ToDateTimeOffset(reader.ReadContentAsString()))
+        },
+        {
+            typeof(DateTime),
+            new Func<XmlReader, object>(reader =>
+            {
+                return XmlConvert.ToDateTime(reader.ReadContentAsString(), XmlDateTimeSerializationMode.Utc);
+            })
+        },
     };
-    private static readonly Dictionary<Type, Action<XmlWriter, object>> s_setterByType = new()
+
+    private static readonly Dictionary<Type, Action<XmlWriter, object>> SetterByType = new()
     {
         { typeof(string), new Action<XmlWriter, object>((writer, value) => writer.WriteValue((string)value)) },
         { typeof(bool), new Action<XmlWriter, object>((writer, value) => writer.WriteValue((bool)value)) },
@@ -49,41 +58,54 @@ public class ConfigurationXmlSerializer : IConfigurationSerializer
         { typeof(float), new Action<XmlWriter, object>((writer, value) => writer.WriteValue((float)value)) },
         { typeof(double), new Action<XmlWriter, object>((writer, value) => writer.WriteValue((double)value)) },
         { typeof(decimal), new Action<XmlWriter, object>((writer, value) => writer.WriteValue((decimal)value)) },
-        { typeof(Guid), new Action<XmlWriter, object>((writer, value) => writer.WriteValue(XmlConvert.ToString((Guid)value))) },
-        { typeof(TimeSpan), new Action<XmlWriter, object>((writer, value) => writer.WriteValue(XmlConvert.ToString((TimeSpan)value))) },
-        { typeof(DateTimeOffset), new Action<XmlWriter, object>((writer, value) => writer.WriteValue((DateTimeOffset)value)) },
+        {
+            typeof(Guid),
+            new Action<XmlWriter, object>((writer, value) => writer.WriteValue(XmlConvert.ToString((Guid)value)))
+        },
+        {
+            typeof(TimeSpan),
+            new Action<XmlWriter, object>((writer, value) => writer.WriteValue(XmlConvert.ToString((TimeSpan)value)))
+        },
+        {
+            typeof(DateTimeOffset),
+            new Action<XmlWriter, object>((writer, value) => writer.WriteValue((DateTimeOffset)value))
+        },
         { typeof(DateTime), new Action<XmlWriter, object>((writer, value) => writer.WriteValue((DateTime)value)) },
     };
-    private static readonly char[] separator = [' '];
+
+    private static readonly char[] Separator = [' '];
+
+    public string Name => "xml";
 
     public void Serialize(Stream stream, IReadOnlyDictionary<ConfigurationDescriptorBase, object> properties)
     {
         var settings = new XmlWriterSettings() { Indent = true };
         using var writer = XmlWriter.Create(stream, settings);
-        using var _ = new WriteElementScope(writer, Configurations, Namespace);
+        using var scope = new WriteElementScope(writer, Configurations, Namespace);
         WriteGroups(writer, properties);
     }
 
-    public IReadOnlyDictionary<ConfigurationDescriptorBase, object> Deserialize(Stream stream, IEnumerable<ConfigurationDescriptorBase> descriptors)
+    public IReadOnlyDictionary<ConfigurationDescriptorBase, object> Deserialize(
+        Stream stream, IEnumerable<ConfigurationDescriptorBase> descriptors)
     {
         using var reader = XmlReader.Create(stream);
         var properties = descriptors.ToDictionary(item => item, item => (object)DBNull.Value);
         reader.MoveToContent();
         if (reader.IsEmptyElement == false)
         {
-            using var _ = new ReadElementScope(reader);
+            using var scope = new ReadElementScope(reader);
             ReadGroups(reader, properties);
         }
         else
         {
             reader.Skip();
         }
+
         return properties;
     }
 
-    public string Name => "xml";
-
-    private static void WriteGroups(XmlWriter writer, IReadOnlyDictionary<ConfigurationDescriptorBase, object> properties)
+    private static void WriteGroups(
+        XmlWriter writer, IReadOnlyDictionary<ConfigurationDescriptorBase, object> properties)
     {
         var query = from item in properties
                     let descriptor = item.Key
@@ -93,26 +115,27 @@ public class ConfigurationXmlSerializer : IConfigurationSerializer
 
         foreach (var item in query)
         {
-            using var _ = new WriteElementScope(writer, "Group");
+            using var scope = new WriteElementScope(writer, "Group");
             writer.WriteAttributeString("Name", item.Key);
             WriteGroup(writer, item);
         }
     }
 
-    private static void WriteGroup(XmlWriter writer, IEnumerable<KeyValuePair<ConfigurationDescriptorBase, object>> items)
+    private static void WriteGroup(
+        XmlWriter writer, IEnumerable<KeyValuePair<ConfigurationDescriptorBase, object>> items)
     {
         foreach (var item in items)
         {
             var descriptor = item.Key;
             var value = item.Value;
-            using var _ = new WriteElementScope(writer, descriptor.Name);
+            using var scope = new WriteElementScope(writer, descriptor.Name);
             WriteField(writer, descriptor.PropertyType, value);
         }
     }
 
     private static void WriteField(XmlWriter writer, Type type, object value)
     {
-        if (s_setterByType.TryGetValue(type, out var setter) == true)
+        if (SetterByType.TryGetValue(type, out var setter) == true)
         {
             setter(writer, value);
         }
@@ -126,13 +149,14 @@ public class ConfigurationXmlSerializer : IConfigurationSerializer
             {
                 lengths[i] = array.GetLength(i);
             }
+
             writer.WriteAttributeString("Length", string.Join(" ", lengths));
             writer.WriteAttributeString("Type", itemType.Name);
             WriteArray(writer, array, itemType, indics, 0);
         }
         else
         {
-            throw new NotImplementedException();
+            throw new NotSupportedException($"Not supported type: '{type}'.");
         }
     }
 
@@ -144,7 +168,7 @@ public class ConfigurationXmlSerializer : IConfigurationSerializer
         for (var i = 0; i < length; i++)
         {
             indics[dimension] = i;
-            using var _ = new WriteElementScope(writer, $"Item{dimension}");
+            using var scope = new WriteElementScope(writer, $"Item{dimension}");
             if (dimension + 1 < rank)
             {
                 WriteArray(writer, array, itemType, indics, dimension + 1);
@@ -164,19 +188,21 @@ public class ConfigurationXmlSerializer : IConfigurationSerializer
         {
             if (reader.IsEmptyElement == false)
             {
-                using var _ = new ReadElementScope(reader, "Group");
-                var groupName = _.Attributes["Name"];
+                using var scope = new ReadElementScope(reader, "Group");
+                var groupName = scope.Attributes["Name"];
                 ReadGroup(reader, groupName, properties);
             }
             else
             {
                 reader.Skip();
             }
+
             reader.MoveToContent();
         }
     }
 
-    private static void ReadGroup(XmlReader reader, string groupName, IDictionary<ConfigurationDescriptorBase, object> properties)
+    private static void ReadGroup(
+        XmlReader reader, string groupName, IDictionary<ConfigurationDescriptorBase, object> properties)
     {
         var descriptorByKey = properties.Keys.ToDictionary(item => item.Key);
 
@@ -188,21 +214,22 @@ public class ConfigurationXmlSerializer : IConfigurationSerializer
                 var key = $"{groupName}.{reader.Name}";
                 var descriptor = descriptorByKey[key];
                 var type = descriptor.PropertyType;
-                using var _ = new ReadElementScope(reader);
-                var attributes = _.Attributes;
+                using var scope = new ReadElementScope(reader);
+                var attributes = scope.Attributes;
                 properties[descriptor] = ReadField(reader, type, attributes);
             }
             else
             {
                 reader.Skip();
             }
+
             reader.MoveToContent();
         }
     }
 
     private static object ReadField(XmlReader reader, Type type, IReadOnlyDictionary<string, string>? attributes)
     {
-        if (s_getterByType.TryGetValue(type, out var getter) == true)
+        if (GetterByType.TryGetValue(type, out var getter) == true)
         {
             return getter(reader);
         }
@@ -210,7 +237,7 @@ public class ConfigurationXmlSerializer : IConfigurationSerializer
         {
             var itemType = type.GetElementType()!;
             var length = attributes!["Length"];
-            var lengths = length.Split(separator, StringSplitOptions.RemoveEmptyEntries)
+            var lengths = length.Split(Separator, StringSplitOptions.RemoveEmptyEntries)
                                 .Select(int.Parse)
                                 .ToArray();
             var array = Array.CreateInstance(type.GetElementType()!, lengths);
@@ -220,7 +247,7 @@ public class ConfigurationXmlSerializer : IConfigurationSerializer
         }
         else
         {
-            throw new NotImplementedException();
+            throw new NotSupportedException($"Not supported type: '{type}'.");
         }
     }
 
@@ -231,7 +258,7 @@ public class ConfigurationXmlSerializer : IConfigurationSerializer
         {
             if (reader.IsEmptyElement == false)
             {
-                using var _ = new ReadElementScope(reader, $"Item{dimension}");
+                using var scope = new ReadElementScope(reader, $"Item{dimension}");
                 indices[dimension] = i;
                 if (dimension + 1 < indices.Length)
                 {
@@ -239,7 +266,7 @@ public class ConfigurationXmlSerializer : IConfigurationSerializer
                 }
                 else
                 {
-                    var attributes = _.Attributes;
+                    var attributes = scope.Attributes;
                     var value = ReadField(reader, itemType, attributes);
                     array.SetValue(value, indices);
                 }
@@ -252,9 +279,7 @@ public class ConfigurationXmlSerializer : IConfigurationSerializer
         }
     }
 
-    #region WriteElementScope
-
-    sealed class WriteElementScope : IDisposable
+    private sealed class WriteElementScope : IDisposable
     {
         private readonly XmlWriter _writer;
 
@@ -275,11 +300,7 @@ public class ConfigurationXmlSerializer : IConfigurationSerializer
         }
     }
 
-    #endregion
-
-    #region ReadElementScope
-
-    sealed class ReadElementScope : IDisposable
+    private sealed class ReadElementScope : IDisposable
     {
         private readonly XmlReader _reader;
         private readonly string _name;
@@ -292,9 +313,20 @@ public class ConfigurationXmlSerializer : IConfigurationSerializer
         public ReadElementScope(XmlReader reader, string name)
         {
             if (reader.NodeType != XmlNodeType.Element)
-                throw new ArgumentException($"Property '{nameof(XmlReader.NodeType)}' of '{nameof(reader)}' must be '{XmlNodeType.Element}'.", nameof(reader));
+            {
+                var message = $"""
+                    Property '{nameof(XmlReader.NodeType)}' of '{nameof(reader)}' must be '{XmlNodeType.Element}'.
+                    """;
+                throw new ArgumentException(message, nameof(reader));
+            }
+
             if (reader.Name != name)
-                throw new ArgumentException($"Property '{nameof(XmlReader.Name)}' of '{nameof(reader)}' must be '{name}'.", nameof(reader));
+            {
+                var message = $"""
+                    Property '{nameof(XmlReader.Name)}' of '{nameof(reader)}' must be '{name}'.
+                    """;
+                throw new ArgumentException(message, nameof(reader));
+            }
 
             _reader = reader;
             _name = name;
@@ -319,7 +351,10 @@ public class ConfigurationXmlSerializer : IConfigurationSerializer
             }
             else
             {
-                System.Diagnostics.Trace.TraceWarning($"Property '{nameof(XmlReader.NodeType)}' of '{nameof(_reader)}' must be '{XmlNodeType.EndElement}'.");
+                var message = $"""
+                    Property '{nameof(XmlReader.NodeType)}' of '{nameof(_reader)}' must be '{XmlNodeType.EndElement}'.
+                    """;
+                System.Diagnostics.Trace.TraceWarning(message);
             }
         }
 
@@ -335,6 +370,4 @@ public class ConfigurationXmlSerializer : IConfigurationSerializer
             return attributes;
         }
     }
-
-    #endregion
 }

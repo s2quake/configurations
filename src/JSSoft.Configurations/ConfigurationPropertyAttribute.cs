@@ -44,9 +44,15 @@ public class ConfigurationPropertyAttribute : Attribute
     {
         var items = new List<string>();
         if (Section != null)
+        {
             items.Add(Section);
+        }
+
         if (Name != null)
+        {
             items.Add(Name);
+        }
+
         items.Add(descriptorName);
         return string.Join(".", items);
     }

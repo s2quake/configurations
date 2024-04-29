@@ -20,13 +20,6 @@ namespace JSSoft.Configurations;
 
 public abstract class ConfigurationDescriptorBase
 {
-    public void Reset() => OnReset();
-
-    public override string ToString()
-    {
-        return $"{Category}.{Name}";
-    }
-
     public abstract object Owner { get; }
 
     public abstract Type PropertyType { get; }
@@ -41,17 +34,24 @@ public abstract class ConfigurationDescriptorBase
 
     public abstract Type? ScopeType { get; }
 
+    internal string Key => $"{Category}.{Name}";
+
+    public void Reset() => OnReset();
+
+    public override string ToString()
+    {
+        return $"{Category}.{Name}";
+    }
+
     public abstract object? GetValue(object obj);
 
     public abstract void SetValue(object obj, object? value);
 
     public abstract bool ShouldSerializeValue(object value);
 
-    internal string Key => $"{Category}.{Name}";
+    internal bool TestSerializeValue(object value) => ShouldSerializeValue(value);
 
     protected virtual void OnReset()
     {
     }
-
-    internal bool TestSerializeValue(object value) => ShouldSerializeValue(value);
 }

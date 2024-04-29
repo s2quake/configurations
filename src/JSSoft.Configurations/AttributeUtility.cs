@@ -21,118 +21,134 @@ using System.Reflection;
 
 namespace JSSoft.Configurations;
 
-static class AttributeUtility
+internal static class AttributeUtility
 {
-    public static T? GetCustomAttribute<T>(MemberInfo memberInfo) where T : Attribute
+    public static T? GetCustomAttribute<T>(MemberInfo memberInfo)
+        where T : Attribute
     {
         if (Attribute.GetCustomAttribute(memberInfo, typeof(T)) is T attribute)
         {
             return attribute;
         }
+
         return default;
     }
 
-    public static T? GetCustomAttribute<T>(ParameterInfo parameterInfo) where T : Attribute
+    public static T? GetCustomAttribute<T>(ParameterInfo parameterInfo)
+        where T : Attribute
     {
         if (Attribute.GetCustomAttribute(parameterInfo, typeof(T)) is T attribute)
         {
             return attribute;
         }
+
         return default;
     }
 
-    public static T? GetCustomAttribute<T>(MemberInfo memberInfo, bool inherit) where T : Attribute
+    public static T? GetCustomAttribute<T>(MemberInfo memberInfo, bool inherit)
+        where T : Attribute
     {
         if (Attribute.GetCustomAttribute(memberInfo, typeof(T), inherit) is T attribute)
         {
             return attribute;
         }
+
         return default;
     }
 
-    public static T[] GetCustomAttributes<T>(MemberInfo memberInfo) where T : Attribute
+    public static T[] GetCustomAttributes<T>(MemberInfo memberInfo)
+        where T : Attribute
     {
         return Attribute.GetCustomAttributes(memberInfo, typeof(T)).OfType<T>().ToArray();
     }
 
-    public static T[] GetCustomAttributes<T>(MemberInfo memberInfo, bool inherit) where T : Attribute
+    public static T[] GetCustomAttributes<T>(MemberInfo memberInfo, bool inherit)
+        where T : Attribute
     {
         return Attribute.GetCustomAttributes(memberInfo, typeof(T), inherit).OfType<T>().ToArray();
     }
 
     public static object? GetDefaultValue(MemberInfo memberInfo)
     {
-        if (Attribute.GetCustomAttribute(memberInfo, typeof(DefaultValueAttribute)) is DefaultValueAttribute defaultValueAttribute)
+        if (memberInfo.GetCustomAttribute<DefaultValueAttribute>() is { } defaultValueAttribute)
         {
             return defaultValueAttribute.Value;
         }
+
         return DBNull.Value;
     }
 
     public static object? GetDefaultValue(Type type)
     {
-        if (Attribute.GetCustomAttribute(type, typeof(DefaultValueAttribute)) is DefaultValueAttribute defaultValueAttribute)
+        if (type.GetCustomAttribute<DefaultValueAttribute>() is { } defaultValueAttribute)
         {
             return defaultValueAttribute.Value;
         }
+
         return DBNull.Value;
     }
 
     public static string GetDescription(MemberInfo memberInfo)
     {
-        if (Attribute.GetCustomAttribute(memberInfo, typeof(DescriptionAttribute)) is DescriptionAttribute descriptionAttribute)
+        if (memberInfo.GetCustomAttribute<DescriptionAttribute>() is { } descriptionAttribute)
         {
             return descriptionAttribute.Description;
         }
+
         return string.Empty;
     }
 
     public static string GetDisplayName(MemberInfo memberInfo)
     {
-        if (Attribute.GetCustomAttribute(memberInfo, typeof(DisplayNameAttribute)) is DisplayNameAttribute displayNameAttribute)
+        if (memberInfo.GetCustomAttribute<DisplayNameAttribute>() is { } displayNameAttribute)
         {
             return displayNameAttribute.DisplayName;
         }
+
         return string.Empty;
     }
 
     public static bool TryGetDisplayName(MemberInfo memberInfo, out string displayName)
     {
-        if (Attribute.GetCustomAttribute(memberInfo, typeof(DisplayNameAttribute)) is DisplayNameAttribute displayNameAttribute && displayNameAttribute.DisplayName != string.Empty)
+        if (memberInfo.GetCustomAttribute<DisplayNameAttribute>() is { } displayNameAttribute &&
+            displayNameAttribute.DisplayName != string.Empty)
         {
             displayName = displayNameAttribute.DisplayName;
             return true;
         }
+
         displayName = string.Empty;
         return false;
     }
 
     public static bool GetBrowsable(MemberInfo memberInfo)
     {
-        if (Attribute.GetCustomAttribute(memberInfo, typeof(BrowsableAttribute)) is BrowsableAttribute browsableAttribute)
+        if (memberInfo.GetCustomAttribute<BrowsableAttribute>() is { } browsableAttribute)
         {
             return browsableAttribute.Browsable;
         }
+
         return true;
     }
 
     public static string GetCategory(MemberInfo memberInfo)
     {
-        if (Attribute.GetCustomAttribute(memberInfo, typeof(CategoryAttribute)) is CategoryAttribute categoryAttribute)
+        if (memberInfo.GetCustomAttribute<CategoryAttribute>() is { } categoryAttribute)
         {
             return categoryAttribute.Category;
         }
+
         return string.Empty;
     }
 
-// #if !JSSOFT_COMMANDS
-//     public static int GetOrder(MemberInfo memberInfo)
-//     {
-//         if (Attribute.GetCustomAttribute(memberInfo, typeof(OrderAttribute)) is OrderAttribute orderAttribute)
-//         {
-//             return orderAttribute.Order;
-//         }
-//         return 0;
-//     }
-// #endif // !JSSOFT_COMMANDS
+    // #if !JSSOFT_COMMANDS
+    //     public static int GetOrder(MemberInfo memberInfo)
+    //     {
+    //         if (Attribute.GetCustomAttribute(memberInfo, typeof(OrderAttribute)) is OrderAttribute orderAttribute)
+    //         {
+    //             return orderAttribute.Order;
+    //         }
+    //         return 0;
+    //     }
+    // #endif // !JSSOFT_COMMANDS
 }

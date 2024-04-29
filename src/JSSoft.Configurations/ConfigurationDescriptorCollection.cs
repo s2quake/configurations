@@ -29,7 +29,8 @@ public sealed class ConfigurationDescriptorCollection : Dictionary<object, Confi
         var query = from type in types
                     from propertyInfo in type.GetProperties(bindingFlags)
                     let attribute = propertyInfo.GetCustomAttribute<ConfigurationPropertyAttribute>()
-                    where attribute != null && scopeType == null || (scopeType != null && scopeType == attribute.ScopeType)
+                    where (attribute != null && scopeType == null) || 
+                          (scopeType != null && scopeType == attribute.ScopeType)
                     select propertyInfo;
         var items = query.ToArray();
 
@@ -37,7 +38,10 @@ public sealed class ConfigurationDescriptorCollection : Dictionary<object, Confi
         {
             var configurationPropertyDescriptor = new ConfigurationDescriptor(propertyInfo: item);
             if (ContainsKey(configurationPropertyDescriptor.Name) == true)
+            {
                 throw new ArgumentException("Exception_AlreadyRegisteredProperty_Format");
+            }
+
             Add(configurationPropertyDescriptor);
         }
     }

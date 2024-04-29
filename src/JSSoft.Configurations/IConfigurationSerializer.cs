@@ -20,9 +20,10 @@ namespace JSSoft.Configurations;
 
 public interface IConfigurationSerializer
 {
+    string Name { get; }
+
     void Serialize(Stream stream, IReadOnlyDictionary<ConfigurationDescriptorBase, object> properties);
 
-    IReadOnlyDictionary<ConfigurationDescriptorBase, object> Deserialize(Stream stream, IEnumerable<ConfigurationDescriptorBase> descriptors);
-
-    string Name { get; }
+    IReadOnlyDictionary<ConfigurationDescriptorBase, object> Deserialize(
+        Stream stream, IEnumerable<ConfigurationDescriptorBase> descriptors);
 }

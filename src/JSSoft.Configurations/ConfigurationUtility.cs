@@ -34,6 +34,7 @@ public static class ConfigurationUtility
         typeof(DateTimeOffset),
         typeof(DateTime),
     ];
+
     public static readonly IReadOnlyDictionary<Type, object> DefaultValueByType = new Dictionary<Type, object>
     {
         { typeof(string), string.Empty },
@@ -55,7 +56,9 @@ public static class ConfigurationUtility
         {
             return true;
         }
-        else if (value.IsArray == true && value.HasElementType == true && CanSupportType(value.GetElementType()!) == true)
+        else if (value.IsArray == true &&
+            value.HasElementType == true &&
+            CanSupportType(value.GetElementType()!) == true)
         {
             return true;
         }
@@ -71,6 +74,7 @@ public static class ConfigurationUtility
         {
             return true;
         }
+
         value = null;
         return false;
     }

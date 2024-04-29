@@ -21,7 +21,7 @@ using System.Reflection;
 
 namespace JSSoft.Configurations;
 
-sealed class ConfigurationDescriptor : ConfigurationDescriptorBase
+internal sealed class ConfigurationDescriptor : ConfigurationDescriptorBase
 {
     private readonly PropertyInfo _propertyInfo;
     private readonly ConfigurationPropertyAttribute _attribute;
@@ -29,17 +29,53 @@ sealed class ConfigurationDescriptor : ConfigurationDescriptorBase
     public ConfigurationDescriptor(PropertyInfo propertyInfo)
     {
         if (propertyInfo.DeclaringType == null)
-            throw new ArgumentException($"Property '{nameof(PropertyInfo.DeclaringType)}' of '{nameof(PropertyInfo)}' cannot be null.", nameof(propertyInfo));
+        {
+            var message = $"""
+                Property '{nameof(PropertyInfo.DeclaringType)}' of '{nameof(PropertyInfo)}' cannot be null.
+                """;
+            throw new ArgumentException(message, nameof(propertyInfo));
+        }
+
         if (propertyInfo.DeclaringType.Namespace == null)
-            throw new ArgumentException($"Property '{nameof(PropertyInfo.DeclaringType)}.{nameof(PropertyInfo.DeclaringType.Namespace)}' of '{nameof(PropertyInfo)}' cannot be null.", nameof(propertyInfo));
+        {
+            var message = $"""
+                Property 
+                '{nameof(PropertyInfo.DeclaringType)}.{nameof(PropertyInfo.DeclaringType.Namespace)}' of 
+                '{nameof(PropertyInfo)}' cannot be null.
+                """;
+            throw new ArgumentException(message, nameof(propertyInfo));
+        }
+
         if (propertyInfo.GetCustomAttribute<ConfigurationPropertyAttribute>() is null)
-            throw new ArgumentException($"'{nameof(PropertyInfo)}' does not have attribute '{nameof(ConfigurationPropertyAttribute)}'.", nameof(propertyInfo));
+        {
+            var message = $"""
+                '{nameof(PropertyInfo)}' does not have attribute '{nameof(ConfigurationPropertyAttribute)}'.
+                """;
+            throw new ArgumentException(message, nameof(propertyInfo));
+        }
+
         if (propertyInfo.CanWrite == false)
-            throw new ArgumentException($"Property '{nameof(PropertyInfo.CanWrite)}' of '{nameof(PropertyInfo)}' must be '{true}'.", nameof(propertyInfo));
+        {
+            var message = $"""
+                Property '{nameof(PropertyInfo.CanWrite)}' of '{nameof(PropertyInfo)}' must be '{true}'.
+                """;
+            throw new ArgumentException(message, nameof(propertyInfo));
+        }
+
         if (propertyInfo.CanRead == false)
-            throw new ArgumentException($"Property '{nameof(PropertyInfo.CanRead)}' of '{nameof(PropertyInfo)}' must be '{true}'.", nameof(propertyInfo));
+        {
+            var message = $"""
+                Property '{nameof(PropertyInfo.CanRead)}' of '{nameof(PropertyInfo)}' must be '{true}'.
+                """;
+            throw new ArgumentException(message, nameof(propertyInfo));
+        }
+
         if (ConfigurationUtility.CanSupportType(propertyInfo.PropertyType) == false)
-            throw new ArgumentException($"{nameof(PropertyInfo.PropertyType)} '{propertyInfo.PropertyType}' is not supported.", nameof(propertyInfo));
+        {
+            throw new ArgumentException(
+                message: $"{nameof(PropertyInfo.PropertyType)} '{propertyInfo.PropertyType}' is not supported.",
+                paramName: nameof(propertyInfo));
+        }
 
         _propertyInfo = propertyInfo;
         _attribute = _propertyInfo.GetCustomAttribute<ConfigurationPropertyAttribute>()!;

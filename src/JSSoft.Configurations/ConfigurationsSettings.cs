@@ -20,7 +20,7 @@ namespace JSSoft.Configurations;
 
 public struct ConfigurationsSettings
 {
-    public Type? ScopeType { get; set; }
+    public static ConfigurationsSettings Default { get; } = default;
 
-    public static ConfigurationsSettings Default { get; } = new ConfigurationsSettings();
+    public Type? ScopeType { get; set; }
 }
