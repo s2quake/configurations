@@ -36,24 +36,7 @@ public class ConfigurationPropertyAttribute : Attribute
 
     public Type? ScopeType { get; set; }
 
-    public string Section { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
 
     public bool IsEncrypted { get; set; }
-
-    internal string GetPropertyName(string descriptorName)
-    {
-        var items = new List<string>();
-        if (Section != null)
-        {
-            items.Add(Section);
-        }
-
-        if (Name != null)
-        {
-            items.Add(Name);
-        }
-
-        items.Add(descriptorName);
-        return string.Join(".", items);
-    }
 }

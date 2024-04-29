@@ -20,7 +20,7 @@ using System.Reflection;
 
 namespace JSSoft.Configurations;
 
-public sealed class ConfigurationDescriptorCollection : Dictionary<object, ConfigurationDescriptorBase>
+public sealed class ConfigurationDescriptorCollection : Dictionary<PropertyInfo, ConfigurationDescriptorBase>
 {
     internal ConfigurationDescriptorCollection(IEnumerable<Type> types, ConfigurationsSettings settings)
     {
@@ -37,16 +37,11 @@ public sealed class ConfigurationDescriptorCollection : Dictionary<object, Confi
         foreach (var item in items)
         {
             var configurationPropertyDescriptor = new ConfigurationDescriptor(propertyInfo: item);
-            if (ContainsKey(configurationPropertyDescriptor.Name) == true)
-            {
-                throw new ArgumentException("Exception_AlreadyRegisteredProperty_Format");
-            }
-
             Add(configurationPropertyDescriptor);
         }
     }
 
-    public void Add(ConfigurationDescriptorBase item) => Add(item.Owner, item);
+    public void Add(ConfigurationDescriptorBase item) => Add(item.PropertyInfo, item);
 
-    public void Remove(ConfigurationDescriptorBase item) => Remove(item.Owner);
+    public void Remove(ConfigurationDescriptorBase item) => Remove(item.PropertyInfo);
 }

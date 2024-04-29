@@ -16,13 +16,17 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System.Reflection;
+
 namespace JSSoft.Configurations;
 
 public abstract class ConfigurationDescriptorBase
 {
-    public abstract object Owner { get; }
+    public abstract PropertyInfo PropertyInfo { get; }
 
     public abstract Type PropertyType { get; }
+
+    public abstract string DeclarationName { get; }
 
     public abstract string Name { get; }
 
@@ -34,14 +38,11 @@ public abstract class ConfigurationDescriptorBase
 
     public abstract Type? ScopeType { get; }
 
-    internal string Key => $"{Category}.{Name}";
+    public string Key => GetKey(DeclarationName, Category, Name);
 
     public void Reset() => OnReset();
 
-    public override string ToString()
-    {
-        return $"{Category}.{Name}";
-    }
+    public override string ToString() => Key;
 
     public abstract object? GetValue(object obj);
 
@@ -54,4 +55,7 @@ public abstract class ConfigurationDescriptorBase
     protected virtual void OnReset()
     {
     }
+
+    private static string GetKey(params string[] items)
+        => string.Join(".", items.Where(item => item != string.Empty));
 }

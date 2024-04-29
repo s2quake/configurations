@@ -78,6 +78,17 @@ internal static class AttributeUtility
         return DBNull.Value;
     }
 
+    public static string GetDeclarationName(Type declaringType)
+    {
+        if (declaringType.GetCustomAttribute<ConfigurationNameAttribute>() is { } configurationNameAttribute &&
+            configurationNameAttribute.Name != string.Empty)
+        {
+            return configurationNameAttribute.Name;
+        }
+
+        return declaringType.Name;
+    }
+
     public static object? GetDefaultValue(Type type)
     {
         if (type.GetCustomAttribute<DefaultValueAttribute>() is { } defaultValueAttribute)
@@ -86,6 +97,23 @@ internal static class AttributeUtility
         }
 
         return DBNull.Value;
+    }
+
+    public static string GetCategory(MemberInfo memberInfo)
+    {
+        if (memberInfo.GetCustomAttribute<ConfigurationPropertyAttribute>() is { } configurationPropertyAttribute &&
+            configurationPropertyAttribute.Category != string.Empty)
+        {
+            return configurationPropertyAttribute.Category;
+        }
+
+        if (memberInfo.GetCustomAttribute<CategoryAttribute>() is { } categoryAttribute &&
+           categoryAttribute.Category != string.Empty)
+        {
+            return categoryAttribute.Category;
+        }
+
+        return string.Empty;
     }
 
     public static string GetDescription(MemberInfo memberInfo)
@@ -129,16 +157,6 @@ internal static class AttributeUtility
         }
 
         return true;
-    }
-
-    public static string GetCategory(MemberInfo memberInfo)
-    {
-        if (memberInfo.GetCustomAttribute<CategoryAttribute>() is { } categoryAttribute)
-        {
-            return categoryAttribute.Category;
-        }
-
-        return string.Empty;
     }
 
     // #if !JSSOFT_COMMANDS

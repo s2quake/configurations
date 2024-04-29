@@ -21,7 +21,7 @@ using System.Reflection;
 
 namespace JSSoft.Configurations;
 
-public class Configurations : IReadOnlyDictionary<string, object>
+public class Configurations : IDictionary<string, object>
 {
     private readonly ConfigurationsSettings _settings;
     private readonly Dictionary<string, object> _valueByName = [];
@@ -45,11 +45,23 @@ public class Configurations : IReadOnlyDictionary<string, object>
 
     public ConfigurationDescriptorCollection Descriptors { get; }
 
-    IEnumerable<string> IReadOnlyDictionary<string, object>.Keys => _valueByName.Keys;
+    public ICollection<string> Keys => _valueByName.Keys;
 
-    IEnumerable<object> IReadOnlyDictionary<string, object>.Values => _valueByName.Values;
+    public ICollection<object> Values => _valueByName.Values;
 
-    object IReadOnlyDictionary<string, object>.this[string key] => _valueByName[key];
+    bool ICollection<KeyValuePair<string, object>>.IsReadOnly => false;
+
+    public object this[string key]
+    {
+        get
+        {
+            return _valueByName[key];
+        }
+        set
+        {
+
+        }
+    }
 
     public static Configurations Create(params object[] objects)
     {
@@ -109,12 +121,12 @@ public class Configurations : IReadOnlyDictionary<string, object>
         }
     }
 
-    bool IReadOnlyDictionary<string, object>.ContainsKey(string key)
+    public bool ContainsKey(string key)
     {
         return _valueByName.ContainsKey(key);
     }
 
-    bool IReadOnlyDictionary<string, object>.TryGetValue(string key, out object value)
+    public bool TryGetValue(string key, out object value)
     {
         if (_valueByName.TryGetValue(key, out var v) == true)
         {
@@ -124,6 +136,60 @@ public class Configurations : IReadOnlyDictionary<string, object>
 
         value = DBNull.Value;
         return false;
+    }
+
+    public void Add(string key, object value)
+    {
+        throw new NotImplementedException();
+    }
+
+    public bool Remove(string key)
+    {
+        throw new NotImplementedException();
+    }
+
+    void ICollection<KeyValuePair<string, object>>.Add(KeyValuePair<string, object> item)
+    {
+        if (_valueByName is ICollection<KeyValuePair<string, object>> collection)
+        {
+            collection.Add(item);
+        }
+        else
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    public void Clear()
+    {
+        _valueByName.Clear();
+    }
+
+    bool ICollection<KeyValuePair<string, object>>.Contains(KeyValuePair<string, object> item)
+        => _valueByName.Contains(item);
+
+    void ICollection<KeyValuePair<string, object>>.CopyTo(KeyValuePair<string, object>[] array, int arrayIndex)
+    {
+        if (_valueByName is ICollection<KeyValuePair<string, object>> collection)
+        {
+            collection.CopyTo(array, arrayIndex);
+        }
+        else
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    bool ICollection<KeyValuePair<string, object>>.Remove(KeyValuePair<string, object> item)
+    {
+        if (_valueByName is ICollection<KeyValuePair<string, object>> collection)
+        {
+            return collection.Remove(item);
+        }
+        else
+        {
+            throw new NotSupportedException();
+        }
     }
 
     IEnumerator<KeyValuePair<string, object>> IEnumerable<KeyValuePair<string, object>>.GetEnumerator()

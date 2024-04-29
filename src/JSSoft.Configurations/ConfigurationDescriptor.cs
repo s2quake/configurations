@@ -79,16 +79,19 @@ internal sealed class ConfigurationDescriptor : ConfigurationDescriptorBase
 
         _propertyInfo = propertyInfo;
         _attribute = _propertyInfo.GetCustomAttribute<ConfigurationPropertyAttribute>()!;
+        DeclarationName = AttributeUtility.GetDeclarationName(_propertyInfo.DeclaringType);
         Name = _attribute.Name != string.Empty ? _attribute.Name : propertyInfo.Name;
         ScopeType = _attribute.ScopeType;
-        Category = _propertyInfo.DeclaringType.Namespace!;
+        Category = AttributeUtility.GetCategory(_propertyInfo);
         DefaultValue = AttributeUtility.GetDefaultValue(_propertyInfo);
         Description = AttributeUtility.GetDescription(_propertyInfo);
     }
 
     public override Type PropertyType => _propertyInfo.PropertyType;
 
-    public override object Owner => _propertyInfo;
+    public override PropertyInfo PropertyInfo => _propertyInfo;
+
+    public override string DeclarationName { get; }
 
     public override string Name { get; }
 
