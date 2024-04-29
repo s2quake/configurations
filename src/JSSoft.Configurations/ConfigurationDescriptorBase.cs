@@ -22,6 +22,8 @@ namespace JSSoft.Configurations;
 
 public abstract class ConfigurationDescriptorBase
 {
+    private string? _key;
+
     public abstract PropertyInfo PropertyInfo { get; }
 
     public abstract Type PropertyType { get; }
@@ -38,7 +40,7 @@ public abstract class ConfigurationDescriptorBase
 
     public abstract Type? ScopeType { get; }
 
-    public string Key => GetKey(DeclarationName, Category, Name);
+    public string Key => _key ??= GetKey(DeclarationName, Category, Name);
 
     public void Reset() => OnReset();
 

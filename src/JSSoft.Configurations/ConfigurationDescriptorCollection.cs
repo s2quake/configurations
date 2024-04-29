@@ -16,32 +16,55 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System.Collections;
+using System.Collections.Specialized;
 using System.Reflection;
 
 namespace JSSoft.Configurations;
 
-public sealed class ConfigurationDescriptorCollection : Dictionary<PropertyInfo, ConfigurationDescriptorBase>
+internal sealed class ConfigurationDescriptorCollection : IEnumerable<ConfigurationDescriptorBase>
 {
-    internal ConfigurationDescriptorCollection(IEnumerable<Type> types, ConfigurationsSettings settings)
+    private static readonly Dictionary<Type, ConfigurationDescriptorCollection> ItemsByType = [];
+    private readonly OrderedDictionary _itemByPropertyInfo = [];
+
+    private ConfigurationDescriptorCollection(Type type)
     {
         const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
-        var scopeType = settings.ScopeType;
-        var query = from type in types
-                    from propertyInfo in type.GetProperties(bindingFlags)
+        var query = from propertyInfo in type.GetProperties(bindingFlags)
                     let attribute = propertyInfo.GetCustomAttribute<ConfigurationPropertyAttribute>()
-                    where (attribute != null && scopeType == null) || 
-                          (scopeType != null && scopeType == attribute.ScopeType)
+                    where attribute != null
+                    where propertyInfo.CanRead == true && propertyInfo.CanWrite == true
                     select propertyInfo;
         var items = query.ToArray();
 
         foreach (var item in items)
         {
             var configurationPropertyDescriptor = new ConfigurationDescriptor(propertyInfo: item);
-            Add(configurationPropertyDescriptor);
+            _itemByPropertyInfo.Add(item, configurationPropertyDescriptor);
         }
     }
 
-    public void Add(ConfigurationDescriptorBase item) => Add(item.PropertyInfo, item);
+    public int Count => _itemByPropertyInfo.Count;
 
-    public void Remove(ConfigurationDescriptorBase item) => Remove(item.PropertyInfo);
+    public ConfigurationDescriptorBase this[int index]
+        => (ConfigurationDescriptorBase)_itemByPropertyInfo[index]!;
+
+    public ConfigurationDescriptorBase this[string name]
+        => (ConfigurationDescriptorBase)_itemByPropertyInfo[name]!;
+
+    public static ConfigurationDescriptorCollection GetDescriptors(Type type)
+    {
+        if (ItemsByType.ContainsKey(type) != true)
+        {
+            ItemsByType.Add(type, new ConfigurationDescriptorCollection(type));
+        }
+
+        return ItemsByType[type];
+    }
+
+    public IEnumerator<ConfigurationDescriptorBase> GetEnumerator()
+        => _itemByPropertyInfo.Values.OfType<ConfigurationDescriptorBase>().GetEnumerator();
+
+    IEnumerator IEnumerable.GetEnumerator()
+        => _itemByPropertyInfo.Values.GetEnumerator();
 }

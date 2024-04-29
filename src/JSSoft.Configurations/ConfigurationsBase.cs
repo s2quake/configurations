@@ -17,57 +17,57 @@
 // 
 
 using System.Collections;
-using System.Reflection;
 
 namespace JSSoft.Configurations;
 
-public class Configurations : IDictionary<string, object>
+public abstract class ConfigurationsBase(IEnumerable<Type> types, ConfigurationsSettings settings)
+    : IDictionary<string, object>
 {
-    private readonly ConfigurationsSettings _settings;
-    private readonly Dictionary<string, object> _valueByName = [];
-    private readonly Dictionary<string, ConfigurationDescriptorBase> _descriptorByName;
+    private readonly ConfigurationsSettings _settings = settings;
+    private readonly Dictionary<string, object> _valueByKey = [];
+    private readonly Dictionary<string, ConfigurationDescriptorBase> _descriptorByKey
+        = types.Select(ConfigurationDescriptorCollection.GetDescriptors)
+               .SelectMany(item => item)
+               .ToDictionary(item => item.Key);
 
-    public Configurations(IEnumerable<Type> types)
+    protected ConfigurationsBase(IEnumerable<Type> types)
         : this(types, ConfigurationsSettings.Default)
     {
     }
 
-    public Configurations(IEnumerable<Type> types, ConfigurationsSettings settings)
-    {
-        _settings = settings;
-        Descriptors = new ConfigurationDescriptorCollection(types, settings);
-        _descriptorByName = Descriptors.ToDictionary(item => $"{item.Key}", item => item.Value);
-    }
-
-    public int Count => _valueByName.Count;
+    public int Count => _valueByKey.Count;
 
     public virtual string Name => "configurations";
 
-    public ConfigurationDescriptorCollection Descriptors { get; }
+    public IReadOnlyDictionary<string, ConfigurationDescriptorBase> Descriptors => _descriptorByKey;
 
-    public ICollection<string> Keys => _valueByName.Keys;
+    public ICollection<string> Keys => _valueByKey.Keys;
 
-    public ICollection<object> Values => _valueByName.Values;
+    public ICollection<object> Values => _valueByKey.Values;
 
     bool ICollection<KeyValuePair<string, object>>.IsReadOnly => false;
 
     public object this[string key]
     {
-        get
-        {
-            return _valueByName[key];
-        }
+        get => _valueByKey[key];
         set
         {
-
+            if (_descriptorByKey.TryGetValue(key, out var descriptor) == true)
+            {
+                if (descriptor.PropertyType.IsAssignableFrom(value.GetType()) == true)
+                {
+                    _valueByKey[key] = value;
+                }
+                else
+                {
+                    throw new ArgumentException($"The value type is not matched.: '{key}'.");
+                }
+            }
+            else
+            {
+                throw new ArgumentException($"The key is not available.: '{key}'.");
+            }
         }
-    }
-
-    public static Configurations Create(params object[] objects)
-    {
-        var configurations = new Configurations(objects.Select(item => item.GetType()));
-        configurations.Commit(objects);
-        return configurations;
     }
 
     public void Commit(params object[] objects)
@@ -94,8 +94,8 @@ public class Configurations : IDictionary<string, object>
 
     public void Write(Stream stream, IConfigurationSerializer serializer)
     {
-        var query = from item in _valueByName
-                    let descriptor = _descriptorByName[item.Key]
+        var query = from item in _valueByKey
+                    let descriptor = _descriptorByKey[item.Key]
                     where descriptor.TestSerializeValue(item.Value) == true
                     select (descriptor, value: item.Value);
         var properties = query.ToDictionary(item => item.descriptor, item => item.value);
@@ -110,25 +110,25 @@ public class Configurations : IDictionary<string, object>
 
     public void Read(Stream stream, IConfigurationSerializer serializer)
     {
-        var properties = serializer.Deserialize(stream, _descriptorByName.Values);
+        var properties = serializer.Deserialize(stream, _descriptorByKey.Values);
         var query = from item in properties
                     let descriptor = item.Key
                     where item.Value is not DBNull
                     select (key: descriptor.Key, value: item.Value);
         foreach (var (key, value) in query)
         {
-            _valueByName[key] = value;
+            _valueByKey[key] = value;
         }
     }
 
     public bool ContainsKey(string key)
     {
-        return _valueByName.ContainsKey(key);
+        return _valueByKey.ContainsKey(key);
     }
 
     public bool TryGetValue(string key, out object value)
     {
-        if (_valueByName.TryGetValue(key, out var v) == true)
+        if (_valueByKey.TryGetValue(key, out var v) == true)
         {
             value = v;
             return true;
@@ -140,17 +140,35 @@ public class Configurations : IDictionary<string, object>
 
     public void Add(string key, object value)
     {
-        throw new NotImplementedException();
+        if (_valueByKey.ContainsKey(key) == true)
+        {
+            throw new ArgumentException($"The key is already exists.: '{key}'.");
+        }
+        else if (_descriptorByKey.TryGetValue(key, out var descriptor) == true)
+        {
+            if (descriptor.PropertyType.IsAssignableFrom(value.GetType()) == true)
+            {
+                _valueByKey.Add(key, value);
+            }
+            else
+            {
+                throw new ArgumentException($"The value type is not matched.: '{key}'.");
+            }
+        }
+        else
+        {
+            throw new ArgumentException($"The key is not available.: '{key}'.");
+        }
     }
 
     public bool Remove(string key)
     {
-        throw new NotImplementedException();
+        return _valueByKey.Remove(key);
     }
 
     void ICollection<KeyValuePair<string, object>>.Add(KeyValuePair<string, object> item)
     {
-        if (_valueByName is ICollection<KeyValuePair<string, object>> collection)
+        if (_valueByKey is ICollection<KeyValuePair<string, object>> collection)
         {
             collection.Add(item);
         }
@@ -162,15 +180,15 @@ public class Configurations : IDictionary<string, object>
 
     public void Clear()
     {
-        _valueByName.Clear();
+        _valueByKey.Clear();
     }
 
     bool ICollection<KeyValuePair<string, object>>.Contains(KeyValuePair<string, object> item)
-        => _valueByName.Contains(item);
+        => _valueByKey.Contains(item);
 
     void ICollection<KeyValuePair<string, object>>.CopyTo(KeyValuePair<string, object>[] array, int arrayIndex)
     {
-        if (_valueByName is ICollection<KeyValuePair<string, object>> collection)
+        if (_valueByKey is ICollection<KeyValuePair<string, object>> collection)
         {
             collection.CopyTo(array, arrayIndex);
         }
@@ -182,7 +200,7 @@ public class Configurations : IDictionary<string, object>
 
     bool ICollection<KeyValuePair<string, object>>.Remove(KeyValuePair<string, object> item)
     {
-        if (_valueByName is ICollection<KeyValuePair<string, object>> collection)
+        if (_valueByKey is ICollection<KeyValuePair<string, object>> collection)
         {
             return collection.Remove(item);
         }
@@ -194,7 +212,7 @@ public class Configurations : IDictionary<string, object>
 
     IEnumerator<KeyValuePair<string, object>> IEnumerable<KeyValuePair<string, object>>.GetEnumerator()
     {
-        foreach (var item in _valueByName)
+        foreach (var item in _valueByKey)
         {
             yield return item;
         }
@@ -202,7 +220,7 @@ public class Configurations : IDictionary<string, object>
 
     IEnumerator IEnumerable.GetEnumerator()
     {
-        foreach (var item in _valueByName)
+        foreach (var item in _valueByKey)
         {
             yield return item;
         }
@@ -210,46 +228,42 @@ public class Configurations : IDictionary<string, object>
 
     private void CommitObject(object obj)
     {
-        const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
         var scopeType = _settings.ScopeType;
-        var properties = obj.GetType().GetProperties(bindingFlags);
-        var query = from item in properties
-                    where item.CanRead == true && item.CanWrite == true
-                    let attribute = item.GetCustomAttribute<ConfigurationPropertyAttribute>()
-                    where object.Equals(attribute?.ScopeType, scopeType) == true && Descriptors.ContainsKey(item) == true
-                    select Descriptors[item];
-        var items = query.ToArray();
-        foreach (var item in items)
+        var descriptors = ConfigurationDescriptorCollection.GetDescriptors(obj.GetType());
+        foreach (var descriptor in descriptors)
         {
-            if (item.GetValue(obj) is object value)
+            if (descriptor.ScopeType != null && descriptor.ScopeType != scopeType)
             {
-                _valueByName[item.Key] = value;
+                continue;
             }
-            else if (_valueByName.ContainsKey(item.Key) == true)
+
+            if (descriptor.GetValue(obj) is object value)
             {
-                _valueByName.Remove(item.Key);
+                _valueByKey[descriptor.Key] = value;
+            }
+            else if (_valueByKey.ContainsKey(descriptor.Key) == true)
+            {
+                _valueByKey.Remove(descriptor.Key);
             }
         }
     }
 
     private void UpdateObject(object obj)
     {
-        const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
         var scopeType = _settings.ScopeType;
-        var properties = obj.GetType().GetProperties(bindingFlags);
-        var query = from item in properties
-                    where item.CanRead == true && item.CanWrite == true
-                    let attribute = item.GetCustomAttribute<ConfigurationPropertyAttribute>()
-                    where object.Equals(attribute?.ScopeType, scopeType) == true && Descriptors.ContainsKey(item) == true
-                    select Descriptors[item];
-        var items = query.ToArray();
-        foreach (var item in items)
+        var descriptors = ConfigurationDescriptorCollection.GetDescriptors(obj.GetType());
+        foreach (var descriptor in descriptors)
         {
+            if (descriptor.ScopeType != null && descriptor.ScopeType != scopeType)
+            {
+                continue;
+            }
+
             try
             {
-                if (_valueByName.TryGetValue(item.Key, out var value) == true)
+                if (_valueByKey.TryGetValue(descriptor.Key, out var value) == true)
                 {
-                    item.SetValue(obj, value);
+                    descriptor.SetValue(obj, value);
                 }
             }
             catch
