@@ -124,7 +124,7 @@ internal sealed class ConfigurationDescriptor : ConfigurationDescriptorBase
         }
         else
         {
-            throw new UnreachableException();
+            throw new NotSupportedException("Unreachable code.");
         }
     }
 }
